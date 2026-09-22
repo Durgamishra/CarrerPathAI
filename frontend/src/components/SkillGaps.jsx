@@ -1,105 +1,132 @@
+import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 
-const skills = [
-  {
-    skill: "Python",
-    current: "Detected",
-    currentColor: "text-green-600",
-    required: "Required",
-    gap: "No gap",
-    gapColor: "text-green-600",
-    action: "Strengthen",
-    actionColor: "text-blue-600",
-  },
-  {
-    skill: "SQL",
-    current: "Detected",
-    currentColor: "text-green-600",
-    required: "Required",
-    gap: "No gap",
-    gapColor: "text-green-600",
-    action: "Strengthen",
-    actionColor: "text-blue-600",
-  },
-  {
-    skill: "Git & GitHub",
-    current: "Detected",
-    currentColor: "text-green-600",
-    required: "Required",
-    gap: "No gap",
-    gapColor: "text-green-600",
-    action: "Strengthen",
-    actionColor: "text-blue-600",
-  },
-  {
-    skill: "Pandas & NumPy",
-    current: "Partial",
-    currentColor: "text-amber-500",
-    required: "Required",
-    gap: "Low",
-    gapColor: "text-amber-500",
-    action: "Learn",
-    actionColor: "text-red-500",
-  },
-  {
-    skill: "Machine Learning",
-    current: "Missing",
-    currentColor: "text-gray-400",
-    required: "Required",
-    gap: "High",
-    gapColor: "text-red-600",
-    action: "Learn",
-    actionColor: "text-red-500",
-  },
-  {
-    skill: "Deep Learning",
-    current: "Missing",
-    currentColor: "text-gray-400",
-    required: "Required",
-    gap: "High",
-    gapColor: "text-red-600",
-    action: "Learn",
-    actionColor: "text-red-500",
-  },
-  {
-    skill: "Statistics",
-    current: "Missing",
-    currentColor: "text-gray-400",
-    required: "Required",
-    gap: "Medium",
-    gapColor: "text-amber-600",
-    action: "Learn",
-    actionColor: "text-red-500",
-  },
-  {
-    skill: "RAG & LLM apps",
-    current: "Missing",
-    currentColor: "text-gray-400",
-    required: "Preferred",
-    gap: "Medium",
-    gapColor: "text-amber-600",
-    action: "Learn",
-    actionColor: "text-red-500",
-  },
-];
+function getGapColor(gap) {
+  switch (gap?.toLowerCase()) {
+    case "high":
+      return "text-red-600";
+    case "medium":
+    case "low":
+      return "text-amber-500";
+    case "no gap":
+      return "text-green-600";
+    default:
+      return "text-gray-500";
+  }
+}
 
-const coreCompetencies = [
-  "Machine Learning",
-  "Deep Learning",
-  "SQL",
-  "Model deployment",
-];
+function getCurrentColor(current) {
+  switch (current?.toLowerCase()) {
+    case "detected":
+      return "text-green-600";
+    case "partial":
+      return "text-amber-500";
+    case "missing":
+      return "text-gray-400";
+    default:
+      return "text-gray-500";
+  }
+}
 
-const mlTopics = [
-  "5 topics, regression to model evaluation",
-  "Practice set with 12 guided exercises",
-  "Project: student performance prediction",
-];
+function getActionColor(action) {
+  return action?.toLowerCase() === "strengthen"
+    ? "text-blue-600"
+    : "text-red-500";
+}
 
 export default function SkillGaps({ onNavigate }) {
+  const [analysis, setAnalysis] = useState(null);
+  const [selectedRole, setSelectedRole] = useState("AI Engineer");
+
+  useEffect(() => {
+    const storedAnalysis =
+      sessionStorage.getItem("resumeAnalysis");
+
+    if (!storedAnalysis) {
+      return;
+    }
+
+    try {
+      const apiData = JSON.parse(storedAnalysis);
+
+      const resumeAnalysis =
+        apiData?.analysis || apiData;
+
+      setAnalysis(resumeAnalysis);
+
+      if (resumeAnalysis?.skillGapAnalysis?.targetRole) {
+        setSelectedRole(
+          resumeAnalysis.skillGapAnalysis.targetRole
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Failed to load skill gap analysis:",
+        error
+      );
+    }
+  }, []);
+
+  const skillGap = analysis?.skillGapAnalysis;
+
+  const skills = skillGap?.skills || [];
+
+  const coreCompetencies =
+    skillGap?.coreCompetencies || [];
+
+  const mlTopics =
+    skillGap?.learningPath?.topics || [];
+
+  const targetRole =
+    skillGap?.targetRole || selectedRole;
+
+  const matchPercentage =
+    skillGap?.matchPercentage ?? 0;
+
+  const readinessNow =
+    skillGap?.readinessNow ?? 0;
+
+  const readinessAfter =
+    skillGap?.readinessAfterRoadmap ?? 0;
+
+  const requiredSkillsCount =
+    skillGap?.requiredSkillsCount ??
+    skills.filter(
+      (skill) =>
+        skill.required?.toLowerCase() === "required"
+    ).length;
+
+  const typicalStack =
+    skillGap?.typicalStack || "Not available";
+
+  const hiringFocus =
+    skillGap?.hiringFocus || "Not available";
+
+  const demand =
+    skillGap?.demand || "Not available";
+
+  const topGapExplanation =
+    skillGap?.topGapExplanation ||
+    "Complete the highest-priority skill gaps to improve your readiness.";
+
+  const highestImpact =
+    skillGap?.learningPath?.title ||
+    "Start with your highest-impact skill";
+
+  const highestImpactLabel =
+    skillGap?.learningPath?.label ||
+    "Highest impact";
+
+  const learningDescription =
+    skillGap?.learningPath?.description ||
+    "Follow the recommended learning path based on your resume.";
+
   return (
     <div className="flex h-screen bg-white overflow-hidden">
-      <Sidebar active="skills" onNavigate={onNavigate} />
+      <Sidebar
+        active="skills"
+        onNavigate={onNavigate}
+      />
 
       <main className="flex-1 overflow-y-auto">
         {/* Header */}
@@ -111,13 +138,19 @@ export default function SkillGaps({ onNavigate }) {
               </h1>
 
               <p className="text-xs text-gray-400 mt-1">
-                Your detected skills compared with what AI Engineer hiring
-                expects in 2026.
+                Your detected skills compared with what{" "}
+                {targetRole} hiring expects.
               </p>
             </div>
 
             <div className="flex items-center gap-3 flex-shrink-0 ml-8">
-              <select className="text-sm border border-gray-200 rounded-md px-3 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300 cursor-pointer">
+              <select
+                value={selectedRole}
+                onChange={(e) =>
+                  setSelectedRole(e.target.value)
+                }
+                className="text-sm border border-gray-200 rounded-md px-3 py-1.5 text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-gray-300 cursor-pointer"
+              >
                 <option>AI Engineer</option>
                 <option>Java Backend Developer</option>
                 <option>Data Analyst</option>
@@ -127,7 +160,9 @@ export default function SkillGaps({ onNavigate }) {
               </select>
 
               <button
-                onClick={() => onNavigate("roadmap")}
+                onClick={() =>
+                  onNavigate("roadmap")
+                }
                 className="text-sm bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors font-medium"
               >
                 Generate roadmap →
@@ -137,7 +172,7 @@ export default function SkillGaps({ onNavigate }) {
         </div>
 
         <div className="px-8 py-6 grid grid-cols-3 gap-6">
-          {/* Left 2 columns: Skill table */}
+          {/* LEFT */}
           <div className="col-span-2">
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <div className="flex justify-between items-center px-5 py-3.5 border-b border-gray-100">
@@ -146,137 +181,172 @@ export default function SkillGaps({ onNavigate }) {
                 </h3>
 
                 <span className="text-xs text-gray-400">
-                  9 skills mapped from your resume
+                  {skills.length} skills mapped from your resume
                 </span>
               </div>
 
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    {["Skill", "Current", "Required", "Gap", "Action"].map(
-                      (h) => (
-                        <th
-                          key={h}
-                          className="px-5 py-2.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider first:pl-5"
-                        >
-                          {h}
-                        </th>
-                      )
-                    )}
+                    {[
+                      "Skill",
+                      "Current",
+                      "Required",
+                      "Gap",
+                      "Action",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-5 py-2.5 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider"
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
 
                 <tbody>
-                  {skills.map((s, i) => (
-                    <tr
-                      key={s.skill}
-                      className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${
-                        i === skills.length - 1 ? "border-0" : ""
-                      }`}
-                    >
-                      <td className="px-5 py-3 text-sm font-medium text-gray-800">
-                        {s.skill}
-                      </td>
+                  {skills.length > 0 ? (
+                    skills.map((s, i) => (
+                      <tr
+                        key={`${s.skill}-${i}`}
+                        className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${
+                          i === skills.length - 1
+                            ? "border-0"
+                            : ""
+                        }`}
+                      >
+                        <td className="px-5 py-3 text-sm font-medium text-gray-800">
+                          {s.skill}
+                        </td>
 
-                      <td className="px-5 py-3">
-                        <span
-                          className={`text-xs font-medium ${s.currentColor}`}
-                        >
-                          {s.current}
-                        </span>
-                      </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={`text-xs font-medium ${getCurrentColor(
+                              s.current
+                            )}`}
+                          >
+                            {s.current}
+                          </span>
+                        </td>
 
-                      <td className="px-5 py-3 text-xs text-gray-500">
-                        {s.required}
-                      </td>
+                        <td className="px-5 py-3 text-xs text-gray-500">
+                          {s.required}
+                        </td>
 
-                      <td className="px-5 py-3">
-                        <span
-                          className={`text-xs font-semibold ${s.gapColor}`}
-                        >
-                          {s.gap}
-                        </span>
-                      </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={`text-xs font-semibold ${getGapColor(
+                              s.gap
+                            )}`}
+                          >
+                            {s.gap}
+                          </span>
+                        </td>
 
-                      <td className="px-5 py-3">
-                        <button
-                          className={`text-xs font-semibold ${s.actionColor} hover:underline`}
-                        >
-                          {s.action}
-                        </button>
+                        <td className="px-5 py-3">
+                          <button
+                            className={`text-xs font-semibold ${getActionColor(
+                              s.action
+                            )} hover:underline`}
+                          >
+                            {s.action}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="px-5 py-10 text-center text-sm text-gray-400"
+                      >
+                        No skill gap analysis available yet.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
 
               {/* Legend */}
               <div className="px-5 py-3 border-t border-gray-100 flex flex-wrap gap-4">
-                {[
-                  {
-                    color: "bg-red-600",
-                    label: "High — blocks shortlisting for this role",
-                  },
-                  {
-                    color: "bg-amber-500",
-                    label: "Medium — expected, learn within 3 months",
-                  },
-                  {
-                    color: "bg-green-500",
-                    label: "No gap — keep it on the journey",
-                  },
-                ].map(({ color, label }) => (
-                  <span
-                    key={label}
-                    className="text-[10px] text-gray-500 flex items-center gap-1.5"
-                  >
-                    <span
-                      className={`w-2 h-2 ${color} rounded-full flex-shrink-0`}
-                    />
+                <span className="text-[10px] text-gray-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-red-600 rounded-full" />
+                  High — blocks shortlisting for this role
+                </span>
 
-                    {label}
-                  </span>
-                ))}
+                <span className="text-[10px] text-gray-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-amber-500 rounded-full" />
+                  Medium — expected, learn within 3 months
+                </span>
+
+                <span className="text-[10px] text-gray-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 bg-green-500 rounded-full" />
+                  No gap — keep it on the journey
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Right column */}
+          {/* RIGHT COLUMN */}
           <div className="space-y-4">
             {/* Role card */}
             <div className="border border-gray-200 rounded-xl p-5">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-semibold text-gray-900">
-                  AI Engineer
+                  {targetRole}
                 </h3>
 
-                <span className="text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ml-2">
-                  ↑ High demand
+                <span className="text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-semibold">
+                  ↑ {demand}
                 </span>
               </div>
 
               <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-                This role profile was used to score your resume and rank these
-                gaps.
+                This role profile was used to score your resume
+                and rank these gaps.
               </p>
 
               <div className="grid grid-cols-2 gap-y-3 gap-x-2 mb-5">
-                {[
-                  ["Required skills", "12 mapped"],
-                  ["Your match", "58%"],
-                  ["Typical stack", "PyTorch, Docker"],
-                  ["Hiring focus", "Projects + fundamentals"],
-                ].map(([label, val]) => (
-                  <div key={label}>
-                    <p className="text-[10px] text-gray-400">
-                      {label}
-                    </p>
+                <div>
+                  <p className="text-[10px] text-gray-400">
+                    Required skills
+                  </p>
 
-                    <p className="text-sm font-semibold text-gray-900 mt-0.5">
-                      {val}
-                    </p>
-                  </div>
-                ))}
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                    {requiredSkillsCount} mapped
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-gray-400">
+                    Your match
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                    {matchPercentage}%
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-gray-400">
+                    Typical stack
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                    {typicalStack}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-[10px] text-gray-400">
+                    Hiring focus
+                  </p>
+
+                  <p className="text-sm font-semibold text-gray-900 mt-0.5">
+                    {hiringFocus}
+                  </p>
+                </div>
               </div>
 
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2">
@@ -284,14 +354,20 @@ export default function SkillGaps({ onNavigate }) {
               </p>
 
               <div className="flex flex-wrap gap-1.5">
-                {coreCompetencies.map((c) => (
-                  <span
-                    key={c}
-                    className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-medium"
-                  >
-                    {c}
+                {coreCompetencies.length > 0 ? (
+                  coreCompetencies.map((c, i) => (
+                    <span
+                      key={`${c}-${i}`}
+                      className="text-[10px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full font-medium"
+                    >
+                      {c}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-400">
+                    No competencies detected.
                   </span>
-                ))}
+                )}
               </div>
             </div>
 
@@ -308,7 +384,7 @@ export default function SkillGaps({ onNavigate }) {
                   </p>
 
                   <p className="text-2xl font-bold text-gray-900">
-                    68%
+                    {readinessNow}%
                   </p>
                 </div>
 
@@ -316,7 +392,9 @@ export default function SkillGaps({ onNavigate }) {
                   <div className="bg-gray-100 rounded-full h-1.5">
                     <div
                       className="bg-red-500 h-1.5 rounded-full"
-                      style={{ width: "68%" }}
+                      style={{
+                        width: `${readinessNow}%`,
+                      }}
                     />
                   </div>
 
@@ -329,7 +407,9 @@ export default function SkillGaps({ onNavigate }) {
                   <div className="bg-gray-100 rounded-full h-1.5">
                     <div
                       className="bg-green-500 h-1.5 rounded-full"
-                      style={{ width: "84%" }}
+                      style={{
+                        width: `${readinessAfter}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -340,49 +420,59 @@ export default function SkillGaps({ onNavigate }) {
                   </p>
 
                   <p className="text-2xl font-bold text-green-600">
-                    84%
+                    {readinessAfter}%
                   </p>
                 </div>
               </div>
 
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Closing Machine Learning, Deep Learning and Statistics adds
-                about 16 points.
+                {topGapExplanation}
               </p>
             </div>
 
-            {/* Start with ML */}
+            {/* Learning path */}
             <div className="border border-gray-200 rounded-xl p-5">
               <div className="flex justify-between items-start mb-1">
                 <h3 className="text-sm font-semibold text-gray-900">
-                  Start with ML
+                  {highestImpact}
                 </h3>
 
-                <span className="text-[10px] text-red-600 bg-red-50 px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ml-2">
-                  Highest impact
+                <span className="text-[10px] text-red-600 bg-red-50 px-2 py-0.5 rounded-full font-semibold">
+                  {highestImpactLabel}
                 </span>
               </div>
 
               <p className="text-[11px] text-gray-400 mb-3 leading-relaxed">
-                Appears in 8 of 10 AI Engineer postings for freshers.
+                {learningDescription}
               </p>
 
               <div className="space-y-1.5 mb-4">
-                {mlTopics.map((topic) => (
-                  <p
-                    key={topic}
-                    className="text-xs text-gray-600 flex items-start gap-2"
-                  >
-                    <span className="w-3.5 h-3.5 rounded-full border border-red-300 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                    </span>
+                {mlTopics.length > 0 ? (
+                  mlTopics.map((topic, i) => (
+                    <p
+                      key={`${topic}-${i}`}
+                      className="text-xs text-gray-600 flex items-start gap-2"
+                    >
+                      <span className="w-3.5 h-3.5 rounded-full border border-red-300 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                      </span>
 
-                    {topic}
+                      {topic}
+                    </p>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    No learning path generated yet.
                   </p>
-                ))}
+                )}
               </div>
 
-              <button className="text-sm font-semibold text-gray-900 hover:text-red-600 transition-colors flex items-center gap-1">
+              <button
+                onClick={() =>
+                  onNavigate("roadmap")
+                }
+                className="text-sm font-semibold text-gray-900 hover:text-red-600 transition-colors flex items-center gap-1"
+              >
                 Open learning path →
               </button>
             </div>
