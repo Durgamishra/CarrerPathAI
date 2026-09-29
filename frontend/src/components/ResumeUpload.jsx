@@ -213,7 +213,7 @@ export default function ResumeUpload({ onNavigate }) {
       // --------------------------------
 
       const response = await fetch(
-        "https://carrer-path-ai-ykiy.vercel.app/api/resume/analyze",
+        "https://carrer-path-ai-7yi6.vercel.app/",
         {
           method: "POST",
           body: formData,
