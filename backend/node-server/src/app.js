@@ -20,9 +20,5 @@ app.get("/", (req, res) => {
   });
 });
 
-// Server
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`CareerPath AI Backend running on port ${PORT}`);
-});
+// Export app for Vercel
+module.exports = app;
