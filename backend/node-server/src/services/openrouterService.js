@@ -1,4 +1,8 @@
-const { Client } = require("@gradio/client");
+const { GoogleGenAI } = require("@google/genai");
+
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+});
 
 async function analyzeResume(resumeText, targetRole = "AI Engineer") {
   try {
@@ -6,208 +10,294 @@ async function analyzeResume(resumeText, targetRole = "AI Engineer") {
       throw new Error("Resume text is empty.");
     }
 
-    console.log("🤖 Sending resume to CareerPath AI Hugging Face model...");
+    console.log("🤖 Sending resume to Gemini...");
     console.log("🎯 Target role:", targetRole);
 
-    // Connect to your Hugging Face Space
-    const client = await Client.connect("Durgamishra1/AI");
+    const prompt = `
+You are CareerPath AI, an AI career and resume analysis assistant.
 
-    // Call the Gradio API
-    const result = await client.predict(
-      "/analyze_resume",
-      {
-        resume_text: resumeText,
-        target_role: targetRole,
-      }
-    );
+Analyze the following resume for the target role.
 
-    console.log("✅ Response received from Hugging Face");
+TARGET ROLE:
+${targetRole}
 
-    /*
-     * Gradio returns the function output.
-     * Our Space returns JSON as a string.
-     */
-    let content = result?.data?.[0];
+RESUME:
+${resumeText}
 
-    if (!content) {
-      throw new Error("Hugging Face returned an empty response.");
-    }
+IMPORTANT RULES:
 
-    console.log("RAW AI RESPONSE:");
-    console.log(content);
+1. Analyze ONLY information supported by the resume.
+2. Do not invent education, experience, projects, skills, certifications, or achievements.
+3. Identify missing skills based on the target role.
+4. Give practical resume improvement suggestions.
+5. Generate a realistic learning roadmap for the target role.
+6. Scores must be integers from 0 to 100.
+7. The target role must be "${targetRole}".
+8. Keep the response useful for a BCA/student-level candidate.
+9. Return ONLY the requested JSON structure.
+`;
 
-    // If Gradio already returned an object
-    if (typeof content === "object") {
-      return content;
-    }
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash-lite",
+      contents: prompt,
+      config: {
+        temperature: 0.2,
+        responseMimeType: "application/json",
 
-    // Make sure it is a string
-    content = String(content).trim();
+        responseSchema: {
+          type: "object",
 
-    // Remove markdown fences if the model accidentally adds them
-    content = content
-      .replace(/```json/gi, "")
-      .replace(/```/g, "")
-      .trim();
+          properties: {
+            candidate: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                email: { type: "string" },
+                phone: { type: "string" },
+                location: { type: "string" },
+                links: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+              },
+              required: [
+                "name",
+                "email",
+                "phone",
+                "location",
+                "links",
+              ],
+            },
 
-    // Find JSON object
-    const firstBrace = content.indexOf("{");
-    const lastBrace = content.lastIndexOf("}");
+            resumeScore: {
+              type: "integer",
+            },
 
-    if (firstBrace === -1 || lastBrace === -1) {
-      throw new Error(
-        "Hugging Face model did not return a valid JSON object."
-      );
-    }
+            atsScore: {
+              type: "integer",
+            },
 
-    content = content.substring(
-      firstBrace,
-      lastBrace + 1
-    );
+            scoreExplanation: {
+              type: "object",
+              properties: {
+                resumeScoreReason: {
+                  type: "string",
+                },
+                atsScoreReason: {
+                  type: "string",
+                },
+              },
+              required: [
+                "resumeScoreReason",
+                "atsScoreReason",
+              ],
+            },
 
-    let analysis;
+            education: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  degree: { type: "string" },
+                  institution: { type: "string" },
+                  year: { type: "string" },
+                  details: { type: "string" },
+                },
+                required: [
+                  "degree",
+                  "institution",
+                  "year",
+                  "details",
+                ],
+              },
+            },
 
-    try {
-      analysis = JSON.parse(content);
-    } catch (parseError) {
-      console.error("❌ JSON PARSE ERROR:", parseError.message);
-      console.error("CLEANED AI RESPONSE:");
-      console.error(content);
+            experience: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  company: { type: "string" },
+                  role: { type: "string" },
+                  duration: { type: "string" },
+                  description: { type: "string" },
+                },
+                required: [
+                  "company",
+                  "role",
+                  "duration",
+                  "description",
+                ],
+              },
+            },
 
-      throw new Error(
-        "AI returned malformed JSON."
-      );
-    }
+            projects: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  technologies: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                },
+                required: [
+                  "name",
+                  "description",
+                  "technologies",
+                ],
+              },
+            },
 
-    // -------------------------------------------------------
-    // BASIC NORMALIZATION
-    // -------------------------------------------------------
+            skills: {
+              type: "array",
+              items: { type: "string" },
+            },
 
-    analysis.candidate =
-      analysis.candidate || {};
+            certifications: {
+              type: "array",
+              items: { type: "string" },
+            },
 
-    analysis.candidate.name =
-      analysis.candidate.name || "";
+            strengths: {
+              type: "array",
+              items: { type: "string" },
+            },
 
-    analysis.candidate.email =
-      analysis.candidate.email || "";
+            weaknesses: {
+              type: "array",
+              items: { type: "string" },
+            },
 
-    analysis.candidate.phone =
-      analysis.candidate.phone || "";
+            missingSkills: {
+              type: "array",
+              items: { type: "string" },
+            },
 
-    analysis.candidate.location =
-      analysis.candidate.location || "";
+            improvements: {
+              type: "array",
+              items: { type: "string" },
+            },
 
-    analysis.candidate.links =
-      Array.isArray(analysis.candidate.links)
-        ? analysis.candidate.links
-        : [];
+            skillGapAnalysis: {
+              type: "object",
+              properties: {
+                targetRole: { type: "string" },
+                matchPercentage: { type: "integer" },
+                requiredSkillsCount: { type: "integer" },
+                readinessNow: { type: "string" },
+                readinessAfterRoadmap: { type: "string" },
+                demand: { type: "string" },
+                typicalStack: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                hiringFocus: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                coreCompetencies: {
+                  type: "array",
+                  items: { type: "string" },
+                },
+                topGapExplanation: { type: "string" },
+                skills: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      skill: { type: "string" },
+                      status: { type: "string" },
+                      importance: { type: "string" },
+                      recommendation: { type: "string" },
+                    },
+                    required: [
+                      "skill",
+                      "status",
+                      "importance",
+                      "recommendation",
+                    ],
+                  },
+                },
+              },
+              required: [
+                "targetRole",
+                "matchPercentage",
+                "requiredSkillsCount",
+                "readinessNow",
+                "readinessAfterRoadmap",
+                "demand",
+                "typicalStack",
+                "hiringFocus",
+                "coreCompetencies",
+                "topGapExplanation",
+                "skills",
+              ],
+            },
 
-    analysis.education =
-      Array.isArray(analysis.education)
-        ? analysis.education
-        : [];
+            roadmap: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  phase: { type: "string" },
+                  duration: { type: "string" },
+                  focus: { type: "string" },
+                  skills: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                  projects: {
+                    type: "array",
+                    items: { type: "string" },
+                  },
+                  outcome: { type: "string" },
+                },
+                required: [
+                  "phase",
+                  "duration",
+                  "focus",
+                  "skills",
+                  "projects",
+                  "outcome",
+                ],
+              },
+            },
+          },
 
-    analysis.experience =
-      Array.isArray(analysis.experience)
-        ? analysis.experience
-        : [];
+          required: [
+            "candidate",
+            "resumeScore",
+            "atsScore",
+            "scoreExplanation",
+            "education",
+            "experience",
+            "projects",
+            "skills",
+            "certifications",
+            "strengths",
+            "weaknesses",
+            "missingSkills",
+            "improvements",
+            "skillGapAnalysis",
+            "roadmap",
+          ],
+        },
+      },
+    });
 
-    analysis.projects =
-      Array.isArray(analysis.projects)
-        ? analysis.projects
-        : [];
+    const analysis = JSON.parse(response.text);
 
-    analysis.skills =
-      Array.isArray(analysis.skills)
-        ? analysis.skills
-        : [];
-
-    analysis.certifications =
-      Array.isArray(analysis.certifications)
-        ? analysis.certifications
-        : [];
-
-    analysis.strengths =
-      normalizeStringArray(analysis.strengths);
-
-    analysis.weaknesses =
-      normalizeStringArray(analysis.weaknesses);
-
-    analysis.missingSkills =
-      normalizeStringArray(analysis.missingSkills);
-
-    analysis.improvements =
-      normalizeStringArray(analysis.improvements);
-
-    analysis.roadmap =
-      Array.isArray(analysis.roadmap)
-        ? analysis.roadmap
-        : [];
-
-    analysis.resumeScore =
-      normalizeScore(analysis.resumeScore);
-
-    analysis.atsScore =
-      normalizeScore(analysis.atsScore);
-
-    analysis.scoreExplanation =
-      analysis.scoreExplanation || {};
-
-    analysis.skillGapAnalysis =
-      analysis.skillGapAnalysis || {};
-
-    console.log("✅ AI analysis parsed successfully");
+    console.log("✅ Gemini analysis received successfully");
 
     return analysis;
-
   } catch (error) {
-
-    console.error(
-      "❌ Resume analysis error:",
-      error
-    );
-
+    console.error("❌ Gemini analysis error:", error);
     throw error;
   }
 }
-
-
-// -------------------------------------------------------
-// SCORE NORMALIZATION
-// -------------------------------------------------------
-
-function normalizeScore(value) {
-  const number = Number(value);
-
-  if (Number.isNaN(number)) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.min(
-      100,
-      Math.round(number)
-    )
-  );
-}
-
-
-// -------------------------------------------------------
-// ARRAY NORMALIZATION
-// -------------------------------------------------------
-
-function normalizeStringArray(value) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter(
-    (item) => typeof item === "string"
-  );
-}
-
 
 module.exports = {
   analyzeResume,
