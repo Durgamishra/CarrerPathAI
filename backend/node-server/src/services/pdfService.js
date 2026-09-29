@@ -3,6 +3,7 @@ async function extractTextFromPDF(pdfBuffer) {
 
   const pdf = await pdfjsLib.getDocument({
     data: new Uint8Array(pdfBuffer),
+    disableWorker: true,
   }).promise;
 
   let text = "";
