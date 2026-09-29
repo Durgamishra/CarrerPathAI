@@ -7,7 +7,12 @@ const resumeRoutes = require("./routes/resumeRoutes");
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: "https://carrer-path-ai.vercel.app",
+    methods: ["GET", "POST"],
+  })
+);
 app.use(express.json());
 
 // Resume routes
